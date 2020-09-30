@@ -29,7 +29,10 @@ void ModuleTaskManager::threadMain()
 		}
 
 		task->execute();
-		finishedTasks.push(task);	
+		{
+			std::unique_lock<std::mutex> lock(mtx);		
+			finishedTasks.push(task);	
+		}
 	}
 }
 
@@ -49,6 +52,8 @@ bool ModuleTaskManager::update()
 {
 	// TODO 4: Dispatch all finished tasks to their owner module (use Module::onTaskFinished() callback)
 	
+	std::unique_lock<std::mutex> lock(mtx);
+
 	while (!finishedTasks.empty())
 	{
 		Task* task = finishedTasks.front();
@@ -63,8 +68,11 @@ bool ModuleTaskManager::cleanUp()
 {
 	// TODO 5: Notify all threads to finish and join them
 
-	exitFlag = true;
-	event.notify_all();
+	{
+		std::unique_lock<std::mutex> lock(mtx);
+		exitFlag = true;
+		event.notify_all();
+	}
 
 	for (int i = 0; i < MAX_THREADS; ++i)
 	{
@@ -80,6 +88,10 @@ void ModuleTaskManager::scheduleTask(Task *task, Module *owner)
 
 	// TODO 2: Insert the task into scheduledTasks so it is executed by some thread	
 
-	scheduledTasks.push(task);
-	event.notify_one();
+	{
+		std::unique_lock<std::mutex> lock(mtx);	
+		scheduledTasks.push(task);
+		event.notify_one();
+	}
+
 }
