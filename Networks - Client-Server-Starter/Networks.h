@@ -1,5 +1,8 @@
 #pragma once
 
+#include "MemoryStream.h"
+#include "Messages.h"
+
 #pragma comment(lib, "Ws2_32.lib")
 
 #pragma comment (lib, "D3D11.lib")

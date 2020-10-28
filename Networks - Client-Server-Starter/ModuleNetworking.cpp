@@ -7,6 +7,7 @@
 
 static uint8 NumModulesUsingWinsock = 0;
 
+
 void ModuleNetworking::reportError(const char* inOperationDesc)
 {
 	LPVOID lpMsgBuf;
@@ -124,14 +125,20 @@ bool ModuleNetworking::preUpdate()
 			// Recv stuff
 			else 
 			{ 
-				int res = recv(s, (char*)incomingDataBuffer, incomingDataBufferSize, 0);
-				if (res == SOCKET_ERROR || res == INVALID_SOCKET)
+				InputMemoryStream packet;
+				int bytesRead = recv(s, packet.GetBufferPtr(), packet.GetCapacity(), 0);
+
+				if (bytesRead > 0)
+				{
+					packet.SetSize((uint32)bytesRead);
+					onSocketReceivedData(s, packet);
+				}
+				
+				else 
 				{
 					reportError("recv reported SOCKET_ERROR");
 					disconnectedSockets.push_back(s);
 				}
-				else
-					onSocketReceivedData(s, incomingDataBuffer);
 			}
 		}
 	}
@@ -167,6 +174,19 @@ bool ModuleNetworking::cleanUp()
 			reportError("ModuleNetworking::cleanUp() - WSACleanup");
 			return false;
 		}
+	}
+
+	return true;
+}
+
+bool ModuleNetworking::sendPacket(const OutputMemoryStream& packet, SOCKET socket)
+{
+	int result = send(socket, packet.GetBufferPtr(), packet.GetSize(), 0);
+	
+	if (result == SOCKET_ERROR)
+	{
+		reportError("send");
+		return false;
 	}
 
 	return true;
