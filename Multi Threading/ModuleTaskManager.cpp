@@ -1,3 +1,5 @@
+// Rafel Brau & Òscar Faura
+
 #include "ModuleTaskManager.h"
 
 void ModuleTaskManager::threadMain()
