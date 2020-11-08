@@ -1,7 +1,7 @@
 // Rafel Brau & Òscar Faura
 
-#include "Networks.h"
 #include "ModuleNetworking.h"
+#include "Networks.h"
 
 #include <list>
 
@@ -126,18 +126,18 @@ bool ModuleNetworking::preUpdate()
 			else 
 			{ 
 				InputMemoryStream packet;
-				int bytesRead = recv(s, packet.GetBufferPtr(), packet.GetCapacity(), 0);
+				int res = recv(s, packet.GetBufferPtr(), packet.GetCapacity(), 0);
 
-				if (bytesRead > 0)
+				if (res == SOCKET_ERROR || res == 0)
 				{
-					packet.SetSize((uint32)bytesRead);
-					onSocketReceivedData(s, packet);
+					reportError("recv");
+					disconnectedSockets.push_back(s);
 				}
 				
 				else 
 				{
-					reportError("recv reported SOCKET_ERROR");
-					disconnectedSockets.push_back(s);
+					packet.SetSize(res);
+					onSocketReceivedData(s, packet);
 				}
 			}
 		}

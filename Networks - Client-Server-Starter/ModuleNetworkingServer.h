@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ModuleNetworking.h"
+#include <map>
 
 class ModuleNetworkingServer : public ModuleNetworking
 {
@@ -13,9 +14,7 @@ public:
 	bool start(int port);
 
 	bool isRunning() const;
-
-
-
+	
 private:
 
 	//////////////////////////////////////////////////////////////////////
@@ -36,15 +35,16 @@ private:
 
 	void onSocketConnected(SOCKET socket, const sockaddr_in &socketAddress) override;
 
-	void onSocketReceivedData(SOCKET socket, const InputMemoryStream& packet) override;
+	void onSocketReceivedData(SOCKET socket, const InputMemoryStream & packet) override;
 
 	void onSocketDisconnected(SOCKET socket) override;
-
 
 
 	//////////////////////////////////////////////////////////////////////
 	// State
 	//////////////////////////////////////////////////////////////////////
+
+	bool CheckUsername(std::string name, SOCKET s);
 
 	enum class ServerState
 	{
@@ -61,8 +61,10 @@ private:
 		sockaddr_in address;
 		SOCKET socket;
 		std::string playerName;
+		std::map<SOCKET, std::string> mutedSockets;
 	};
 
 	std::vector<ConnectedSocket> connectedSockets;
+	std::map<std::string, std::string> bannedSockets;
 };
 

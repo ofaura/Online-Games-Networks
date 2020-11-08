@@ -2,6 +2,8 @@
 
 #include "ModuleNetworking.h"
 
+#include <list>
+
 class ModuleNetworkingClient : public ModuleNetworking
 {
 public:
@@ -49,11 +51,23 @@ private:
 		Logging
 	};
 
+	struct Message
+	{
+		Message(std::string msg) : msg(msg) {}
+		Message(std::string msg, ImVec4 color) : msg(msg), color(color) {}
+
+		std::string msg;
+		ImVec4 color = ImVec4(1,1,1,1);
+	};
+
 	ClientState state = ClientState::Stopped;
 
 	sockaddr_in serverAddress = {};
 	SOCKET s = INVALID_SOCKET;
 
 	std::string playerName;
+
+	std::list<Message> messagesList;
+
 };
 

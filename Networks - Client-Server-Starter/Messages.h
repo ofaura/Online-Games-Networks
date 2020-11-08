@@ -5,11 +5,28 @@
 
 enum class ClientMessage
 {
-	Hello
+	Hello,
+	Line
 };
 
 enum class ServerMessage
 {
-	Welcome
+	Welcome,
+	Help,
+	List,
+	Whisper,
+	ChangeName,
+	Unknown,
+	Chat,
+	Connected,
+	Disconnected,
+	Remove,
+	Mute,
+	UnMute,
+	Clear,
+	Ban,
+	Unban,
+	Error,
+	NonWelcome
 };
 
