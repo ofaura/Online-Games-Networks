@@ -187,6 +187,17 @@ void ModuleNetworkingServer::onPacketReceived(const InputMemoryStream &packet, c
 				}
 			}
 		}
+		else if (message == ClientMessage::Ping)
+		{
+			for (ClientProxy& clientProxy : clientProxies)
+			{
+				if (&proxy->address == &clientProxy.address)
+				{
+					clientProxy.secondsSinceLastReceivedPacket = 0.0f;
+					break;
+				}
+			}
+		}
 
 		// TODO(you): UDP virtual connection lab session
 	}
@@ -210,10 +221,36 @@ void ModuleNetworkingServer::onUpdate()
 			}
 		}
 
+		secondsSinceLastSendPacket += Time.deltaTime;
+
 		for (ClientProxy &clientProxy : clientProxies)
 		{
 			if (clientProxy.connected)
 			{
+				clientProxy.secondsSinceLastReceivedPacket += Time.deltaTime;
+
+				if (clientProxy.secondsSinceLastReceivedPacket > DISCONNECT_TIMEOUT_SECONDS)
+				{
+					OutputMemoryStream packet;
+					packet << PROTOCOL_ID;
+					packet << ServerMessage::Unwelcome;
+
+					sendPacket(packet, clientProxy.address);
+				
+					clientProxy.secondsSinceLastReceivedPacket = 0.0f;
+				}
+
+				if (secondsSinceLastSendPacket >= PING_INTERVAL_SECONDS)
+				{
+					OutputMemoryStream packet;
+					packet << PROTOCOL_ID;
+					packet << ServerMessage::Ping;
+
+					sendPacket(packet, clientProxy.address);
+
+					secondsSinceLastSendPacket = 0.0f;
+				}
+
 				// TODO(you): UDP virtual connection lab session
 
 				// Don't let the client proxy point to a destroyed game object

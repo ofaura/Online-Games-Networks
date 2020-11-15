@@ -109,6 +109,7 @@ private:
 	//////////////////////////////////////////////////////////////////////
 
 	// TODO(you): Latency management lab session
-
+	float secondsSinceLastReceivedPacket = 0.0f;
+	float secondsSinceLastSendPacket = 0.0f;
 };
 

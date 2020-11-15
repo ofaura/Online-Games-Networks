@@ -51,6 +51,8 @@ void ModuleNetworkingClient::onStart()
 
 	secondsSinceLastHello = 9999.0f;
 	secondsSinceLastInputDelivery = 0.0f;
+	secondsSinceLastReceivedPacket = 0.0f;
+	secondsSinceLastSendPacket = 0.0f;
 }
 
 void ModuleNetworkingClient::onGui()
@@ -129,6 +131,11 @@ void ModuleNetworkingClient::onPacketReceived(const InputMemoryStream &packet, c
 	}
 	else if (state == ClientState::Connected)
 	{
+		if (message == ServerMessage::Ping)
+		{
+			secondsSinceLastReceivedPacket = 0.0f;
+		}
+
 		// TODO(you): World state replication lab session
 
 		// TODO(you): Reliability on top of UDP lab session
@@ -205,6 +212,25 @@ void ModuleNetworkingClient::onUpdate()
 		}
 
 		// TODO(you): Latency management lab session
+		secondsSinceLastReceivedPacket += Time.deltaTime;
+
+		if (secondsSinceLastReceivedPacket > DISCONNECT_TIMEOUT_SECONDS)
+		{
+			disconnect();
+		}
+
+		secondsSinceLastSendPacket += Time.deltaTime;
+
+		if (secondsSinceLastSendPacket >= PING_INTERVAL_SECONDS)
+		{
+			OutputMemoryStream packet;
+			packet << PROTOCOL_ID;
+			packet << ClientMessage::Ping;
+
+			sendPacket(packet, serverAddress);
+
+			secondsSinceLastSendPacket = 0.0f;
+		}
 
 		// Update camera for player
 		GameObject *playerGameObject = App->modLinkingContext->getNetworkGameObject(networkId);
