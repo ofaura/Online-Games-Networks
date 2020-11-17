@@ -189,14 +189,8 @@ void ModuleNetworkingServer::onPacketReceived(const InputMemoryStream &packet, c
 		}
 		else if (message == ClientMessage::Ping)
 		{
-			for (ClientProxy& clientProxy : clientProxies)
-			{
-				if (&proxy->address == &clientProxy.address)
-				{
-					clientProxy.secondsSinceLastReceivedPacket = 0.0f;
-					break;
-				}
-			}
+			if (proxy != nullptr)	
+				proxy->secondsSinceLastReceivedPacket = 0.0f;	
 		}
 
 		// TODO(you): UDP virtual connection lab session
@@ -237,7 +231,7 @@ void ModuleNetworkingServer::onUpdate()
 
 					sendPacket(packet, clientProxy.address);
 				
-					clientProxy.secondsSinceLastReceivedPacket = 0.0f;
+					destroyClientProxy(&clientProxy);
 				}
 
 				if (secondsSinceLastSendPacket >= PING_INTERVAL_SECONDS)
