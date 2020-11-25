@@ -1,4 +1,5 @@
 #include "Networks.h"
+#include "ModuleGameObject.h"
 
 bool ModuleGameObject::init()
 {
@@ -80,7 +81,8 @@ void ModuleGameObject::Destroy(GameObject * gameObject)
 {
 	ASSERT(gameObject->networkId == 0); // NOTE(jesus): If it has a network identity, it must be destroyed by the Networking module first
 
-	static const GameObject::State gNextState[] = {
+	static const GameObject::State gNextState[] = 
+	{
 		GameObject::NON_EXISTING, // After NON_EXISTING
 		GameObject::DESTROY,      // After INSTANTIATE
 		GameObject::DESTROY,      // After STARTING
@@ -120,4 +122,106 @@ void Destroy(GameObject * gameObject)
 void Destroy(GameObject * gameObject, float delaySeconds)
 {
 	ModuleGameObject::Destroy(gameObject, delaySeconds);
+}
+
+void GameObject::WriteData(OutputMemoryStream& packet)
+{
+	packet << position.x;
+	packet << position.y;
+	packet << size.x;
+	packet << size.y;
+	packet << angle;
+	
+	packet << sprite->pivot.x;
+	packet << sprite->pivot.y;
+	packet << sprite->color.r;
+	packet << sprite->color.g;
+	packet << sprite->color.b;
+	packet << sprite->color.a;
+		
+	std::string fileName = sprite->texture->filename;
+	packet.Write(fileName);		
+
+	packet << sprite->order;
+	
+	if (sprite->texture->filename != "explosion1.png")
+	{
+		ColliderType colliderType = collider != nullptr ? collider->type : ColliderType::None;
+		packet << colliderType;
+	
+		packet << collider->isTrigger;	
+	}
+}
+
+void GameObject::ReadData(const InputMemoryStream& packet)
+{
+	packet >> position.x;
+	packet >> position.y;
+	packet >> size.x;
+	packet >> size.y;
+	packet >> angle;
+
+	sprite = App->modRender->addSprite(this);
+	
+	packet >> sprite->pivot.x;
+	packet >> sprite->pivot.y;
+	packet >> sprite->color.r;
+	packet >> sprite->color.g;
+	packet >> sprite->color.b;
+	packet >> sprite->color.a;
+		
+	std::string fileName;
+	packet.Read(fileName);
+
+	if (fileName == "space_background.jpg") 
+		sprite->texture = App->modResources->space;
+			
+	else if (fileName == "asteroid1.png") 
+		sprite->texture = App->modResources->asteroid1;
+			
+	else if (fileName == "asteroid2.png") 
+		sprite->texture = App->modResources->asteroid2;
+			
+	else if (fileName == "spacecraft1.png") 
+		sprite->texture = App->modResources->spacecraft1;
+			
+	else if (fileName == "spacecraft2.png") 
+		sprite->texture = App->modResources->spacecraft2;
+			
+	else if (fileName == "spacecraft3.png") 
+		sprite->texture = App->modResources->spacecraft3;
+			
+	else if (fileName == "laser.png") 
+		sprite->texture = App->modResources->laser;
+			
+	else if (fileName == "explosion1.png") 
+		sprite->texture = App->modResources->explosion1;		
+		
+	packet >> sprite->order;
+	
+	if (sprite->texture->filename != "explosion1.png")
+	{
+		ColliderType type = ColliderType::None;
+		packet >> type;
+		collider = App->modCollision->addCollider(type, this);
+		packet >> collider->isTrigger;
+
+		if (collider->type == ColliderType::Laser)
+		{
+			Laser* laserBehaviour = App->modBehaviour->addLaser(this);
+			behaviour = laserBehaviour;
+		}
+
+		else if (collider->type == ColliderType::Player)
+		{
+			Spaceship* playerBehaviour = App->modBehaviour->addSpaceship(this);
+			behaviour = playerBehaviour;
+		}
+	}
+
+	else
+	{
+		animation = App->modRender->addAnimation(this);
+		animation->clip = App->modResources->explosionClip;
+	}
 }

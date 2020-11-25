@@ -38,6 +38,11 @@ struct GameObject
 	};
 	State state = NON_EXISTING;
 
+public:
+
+	void WriteData(OutputMemoryStream& packet);
+	void ReadData(const InputMemoryStream& packet);
+
 private:
 
 	void * operator new(size_t size) = delete;
@@ -65,8 +70,6 @@ public:
 	static void Destroy(GameObject * gameObject);
 
 	static void Destroy(GameObject * gameObject, float delaySeconds);
-
-
 
 	GameObject gameObjects[MAX_GAME_OBJECTS] = {};
 

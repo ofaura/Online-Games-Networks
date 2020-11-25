@@ -66,6 +66,8 @@ private:
 
 	float secondsSinceLastHello = 0.0f;
 
+	ReplicationManagerClient replicationManagerClient;
+
 
 	// Input ///////////
 

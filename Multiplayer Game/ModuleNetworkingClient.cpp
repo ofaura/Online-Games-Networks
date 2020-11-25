@@ -108,7 +108,8 @@ void ModuleNetworkingClient::onPacketReceived(const InputMemoryStream &packet, c
 
 	uint32 protoId;
 	packet >> protoId;
-	if (protoId != PROTOCOL_ID) return;
+	if (protoId != PROTOCOL_ID) 
+		return;
 
 	ServerMessage message;
 	packet >> message;
@@ -137,6 +138,10 @@ void ModuleNetworkingClient::onPacketReceived(const InputMemoryStream &packet, c
 		}
 
 		// TODO(you): World state replication lab session
+		if (message == ServerMessage::Replication)
+		{
+			replicationManagerClient.Read(packet);
+		}
 
 		// TODO(you): Reliability on top of UDP lab session
 	}

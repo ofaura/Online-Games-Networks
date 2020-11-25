@@ -98,6 +98,8 @@ void ModuleNetworkingServer::onPacketReceived(const InputMemoryStream &packet, c
 
 		if (message == ClientMessage::Hello)
 		{
+			GameObject* playerGO = nullptr;
+
 			if (proxy == nullptr)
 			{
 				proxy = createClientProxy();
@@ -119,7 +121,8 @@ void ModuleNetworkingServer::onPacketReceived(const InputMemoryStream &packet, c
 					// Create new network object
 					vec2 initialPosition = 500.0f * vec2{ Random.next() - 0.5f, Random.next() - 0.5f};
 					float initialAngle = 360.0f * Random.next();
-					proxy->gameObject = spawnPlayer(spaceshipType, initialPosition, initialAngle);
+					playerGO = spawnPlayer(spaceshipType, initialPosition, initialAngle);
+					proxy->gameObject = playerGO;
 				}
 				else
 				{
@@ -145,7 +148,11 @@ void ModuleNetworkingServer::onPacketReceived(const InputMemoryStream &packet, c
 				{
 					GameObject *gameObject = networkGameObjects[i];
 					
-					// TODO(you): World state replication lab session
+					if (playerGO != gameObject)
+					{
+						// TODO(you): World state replication lab session
+						proxy->replicationManagerServer.Create(gameObject->networkId);
+					}
 				}
 
 				LOG("Message received: hello - from player %s", proxy->name.c_str());
@@ -215,26 +222,20 @@ void ModuleNetworkingServer::onUpdate()
 			}
 		}
 
-		secondsSinceLastSendPacket += Time.deltaTime;
-
 		for (ClientProxy &clientProxy : clientProxies)
 		{
+			clientProxy.secondsSinceLastSendPacket += Time.deltaTime;
+
 			if (clientProxy.connected)
 			{
 				clientProxy.secondsSinceLastReceivedPacket += Time.deltaTime;
 
 				if (clientProxy.secondsSinceLastReceivedPacket > DISCONNECT_TIMEOUT_SECONDS)
-				{
-					OutputMemoryStream packet;
-					packet << PROTOCOL_ID;
-					packet << ServerMessage::Unwelcome;
-
-					sendPacket(packet, clientProxy.address);
-				
+				{				
 					destroyClientProxy(&clientProxy);
 				}
 
-				if (secondsSinceLastSendPacket >= PING_INTERVAL_SECONDS)
+				if (clientProxy.secondsSinceLastSendPacket >= PING_INTERVAL_SECONDS && clientProxy.gameObject != nullptr)
 				{
 					OutputMemoryStream packet;
 					packet << PROTOCOL_ID;
@@ -242,7 +243,7 @@ void ModuleNetworkingServer::onUpdate()
 
 					sendPacket(packet, clientProxy.address);
 
-					secondsSinceLastSendPacket = 0.0f;
+					clientProxy.secondsSinceLastSendPacket = 0.0f;
 				}
 
 				// TODO(you): UDP virtual connection lab session
@@ -253,7 +254,19 @@ void ModuleNetworkingServer::onUpdate()
 					clientProxy.gameObject = nullptr;
 				}
 
-				// TODO(you): World state replication lab session
+				// TODO(you): World state replication lab session				
+				if (clientProxy.replicationManagerServer.repCommands.size())
+				{
+					OutputMemoryStream packet;
+					packet << PROTOCOL_ID;
+					packet << ServerMessage::Replication;
+
+					clientProxy.replicationManagerServer.Write(packet);
+
+					sendPacket(packet, clientProxy.address);
+				}
+
+
 
 				// TODO(you): Reliability on top of UDP lab session
 			}
@@ -396,6 +409,7 @@ GameObject * ModuleNetworkingServer::instantiateNetworkObject()
 		if (clientProxies[i].connected)
 		{
 			// TODO(you): World state replication lab session
+			clientProxies[i].replicationManagerServer.Create(gameObject->networkId);
 		}
 	}
 
@@ -410,6 +424,7 @@ void ModuleNetworkingServer::updateNetworkObject(GameObject * gameObject)
 		if (clientProxies[i].connected)
 		{
 			// TODO(you): World state replication lab session
+			clientProxies[i].replicationManagerServer.Update(gameObject->networkId);
 		}
 	}
 }
@@ -422,6 +437,7 @@ void ModuleNetworkingServer::destroyNetworkObject(GameObject * gameObject)
 		if (clientProxies[i].connected)
 		{
 			// TODO(you): World state replication lab session
+			clientProxies[i].replicationManagerServer.Destroy(gameObject->networkId);
 		}
 	}
 

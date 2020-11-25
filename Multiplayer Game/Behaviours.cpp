@@ -31,10 +31,6 @@ void Laser::update()
 	}
 }
 
-
-
-
-
 void Spaceship::start()
 {
 	gameObject->tag = (uint32)(Random.next() * UINT_MAX);
@@ -82,6 +78,7 @@ void Spaceship::onInput(const InputController &input)
 			laser->sprite = App->modRender->addSprite(laser);
 			laser->sprite->order = 3;
 			laser->sprite->texture = App->modResources->laser;
+			laser->collider = App->modCollision->addCollider(ColliderType::Laser, laser);
 
 			Laser *laserBehaviour = App->modBehaviour->addLaser(laser);
 			laserBehaviour->isServer = isServer;
