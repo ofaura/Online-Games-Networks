@@ -139,7 +139,9 @@ void GameObject::WriteData(OutputMemoryStream& packet)
 	packet << sprite->color.b;
 	packet << sprite->color.a;
 		
-	packet << sprite->texture->filename;
+	//packet << sprite->texture->filename;
+	std::string fileName = sprite->texture->filename;
+	packet.Write(fileName);
 
 	packet << sprite->order;
 	
