@@ -9,9 +9,9 @@ Delivery* DeliveryManager::writeSequenceNumber(OutputMemoryStream& packet)
 	delivery->sequenceNumber = nextOutgoingSequenceNumber++;
 	delivery->dispatchTime = Time.time;
 
-	packet << delivery->sequenceNumber;
-
 	pendingDeliveries.push_back(delivery);
+
+	packet << delivery->sequenceNumber;
 
 	return delivery;
 }
@@ -21,7 +21,7 @@ bool DeliveryManager::processSequenceNumber(const InputMemoryStream& packet)
 	uint32 sequenceNumber;
 	packet >> sequenceNumber;
 
-	if (sequenceNumber == nextExpectedSequenceNumber)
+	if (sequenceNumber >= nextExpectedSequenceNumber)
 	{
 		sequenceNumbersPendingAck.push_back(sequenceNumber);
 		nextExpectedSequenceNumber = sequenceNumber + 1;
@@ -42,8 +42,8 @@ void DeliveryManager::writePendingAcks(OutputMemoryStream& packet)
 
 	if (size > 0 && hasPendingAcks())
 	{
-		packet.Write(size);
-		packet.Write(sequenceNumbersPendingAck.front());
+		packet << size;
+		packet << sequenceNumbersPendingAck.front();
 		sequenceNumbersPendingAck.clear();
 	}
 }
@@ -52,8 +52,8 @@ void DeliveryManager::processAcks(const InputMemoryStream& packet)
 {
 	uint32 seqNumber;
 	uint32 size;
-	packet.Read(size);
-	packet.Read(seqNumber);
+	packet >> size;
+	packet >> seqNumber;
 
 	while (seqNumber < seqNumber + size
 		&& !pendingDeliveries.empty())
@@ -86,7 +86,7 @@ void DeliveryManager::processTimedOutPackets()
 	{
 		Delivery* delivery = pendingDeliveries.front();
 
-		if (Time.time - delivery->dispatchTime >= PACKET_DELIVERY_TIMEOUT_SECONDS)
+		if (Time.time - delivery->dispatchTime >= 0.1f)
 		{
 			delivery->delegate->onDeliveryFailure(this);
 

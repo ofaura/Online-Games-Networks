@@ -164,8 +164,7 @@ void ModuleNetworkingClient::onPacketReceived(const InputMemoryStream &packet, c
 			uint32 sequenceNumber;
 			packet >> sequenceNumber;
 
-			if (sequenceNumber > inputDataFront)
-				inputDataFront = sequenceNumber;
+			inputDataFront = sequenceNumber;
 
 			if (clientPrediction)
 			{
@@ -174,8 +173,11 @@ void ModuleNetworkingClient::onPacketReceived(const InputMemoryStream &packet, c
 				for (uint32 i = inputDataFront; i < inputDataBack; ++i)
 				{
 					InputPacketData& inputPacketData = inputData[i % ArrayCount(inputData)];
+					
 					InputController controller;
-					controller = inputControllerFromInputPacketData(inputPacketData, controller);
+					controller.horizontalAxis = inputPacketData.horizontalAxis;
+					controller.verticalAxis = inputPacketData.verticalAxis;
+					unpackInputControllerButtons(inputPacketData.buttonBits, controller);
 
 					if (playerGameObject)
 					{

@@ -235,15 +235,13 @@ void ModuleNetworkingServer::onUpdate()
 
 		for (ClientProxy &clientProxy : clientProxies)
 		{
-			clientProxy.deliveryManager.processTimedOutPackets();
-
-			clientProxy.secondsSinceLastSendPacket += Time.deltaTime;
-			clientProxy.secondsSinceLastReplication += Time.deltaTime;
-
 			if (clientProxy.connected)
 			{
+				clientProxy.deliveryManager.processTimedOutPackets();
+
 				clientProxy.secondsSinceLastReceivedPacket += Time.deltaTime;
 				clientProxy.secondsSinceLastReplication += Time.deltaTime;
+				clientProxy.secondsSinceLastSendPacket += Time.deltaTime;
 
 				if (clientProxy.secondsSinceLastReceivedPacket > DISCONNECT_TIMEOUT_SECONDS)
 				{				
