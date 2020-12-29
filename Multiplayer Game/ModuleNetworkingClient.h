@@ -14,6 +14,7 @@ public:
 
 	void setPlayerInfo(const char *playerName, uint8 spaceshipType);
 
+	uint32 GetNetworkID() { return networkId; };
 
 
 private:
@@ -65,6 +66,8 @@ private:
 	// Connecting stage
 
 	float secondsSinceLastHello = 0.0f;
+	float secondsSinceLastReceivedPacket = 0.0f;
+	float secondsSinceLastSendPacket = 0.0f;
 
 	ReplicationManagerClient replicationManagerClient;
 
@@ -103,15 +106,13 @@ private:
 	//////////////////////////////////////////////////////////////////////
 
 	// TODO(you): Reliability on top of UDP lab session
-
-
+	DeliveryManager deliveryManager;
 
 	//////////////////////////////////////////////////////////////////////
 	// Latency management
 	//////////////////////////////////////////////////////////////////////
 
 	// TODO(you): Latency management lab session
-	float secondsSinceLastReceivedPacket = 0.0f;
-	float secondsSinceLastSendPacket = 0.0f;
+	bool clientPrediction = true;
 };
 

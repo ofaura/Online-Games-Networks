@@ -8,7 +8,7 @@ void ReplicationManagerClient::Read(const InputMemoryStream& packet)
 	while (packet.RemainingByteCount() > 0)
 	{
 		uint32 networkID;
-		ReplicationAction repAction;
+		ReplicationAction repAction = ReplicationAction::None;
 
 		packet >> networkID;
 		packet >> repAction;
@@ -36,6 +36,8 @@ void ReplicationManagerClient::Read(const InputMemoryStream& packet)
 					packet >> gameObject->position.x;
 					packet >> gameObject->position.y;
 					packet >> gameObject->angle;
+					
+					gameObject->behaviour->read(packet);
 				}
 
 				break;

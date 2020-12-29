@@ -2,6 +2,8 @@
 
 // TODO(you): World state replication lab session
 // TODO(you): World state replication lab session
+class ReplicationManagerDelivery;
+
 enum class ReplicationAction
 {
 	None, Create, Update, Destroy
@@ -23,9 +25,26 @@ public:
 	void Update(uint32 networkID);
 	void Destroy(uint32 networkID);
 
-	void Write(OutputMemoryStream& packet);
+	void Write(OutputMemoryStream& packet, ReplicationManagerDelivery* delivery);
 
 public:
 
 	std::vector<ReplicationCommand> repCommands;
+};
+
+class ReplicationManagerDelivery : public DeliveryDelegate
+{
+public:
+	ReplicationManagerDelivery(ReplicationManagerServer* repManagerServer);
+	~ReplicationManagerDelivery();
+
+	void onDeliverySuccess(DeliveryManager* deliveryManager) override;
+	void onDeliveryFailure(DeliveryManager* deliveryManager) override;
+
+	void AddReplicationCommand(const ReplicationCommand& replicationCommand);
+
+
+private:
+	ReplicationManagerServer* replicationManager;
+	std::vector<ReplicationCommand> replicationCommands;
 };

@@ -98,8 +98,6 @@ void ModuleNetworkingServer::onPacketReceived(const InputMemoryStream &packet, c
 
 		if (message == ClientMessage::Hello)
 		{
-			GameObject* playerGO = nullptr;
-
 			if (proxy == nullptr)
 			{
 				proxy = createClientProxy();
@@ -121,8 +119,7 @@ void ModuleNetworkingServer::onPacketReceived(const InputMemoryStream &packet, c
 					// Create new network object
 					vec2 initialPosition = 500.0f * vec2{ Random.next() - 0.5f, Random.next() - 0.5f};
 					float initialAngle = 360.0f * Random.next();
-					playerGO = spawnPlayer(spaceshipType, initialPosition, initialAngle);
-					proxy->gameObject = playerGO;
+					proxy->gameObject = spawnPlayer(spaceshipType, initialPosition, initialAngle);
 				}
 				else
 				{
@@ -148,7 +145,7 @@ void ModuleNetworkingServer::onPacketReceived(const InputMemoryStream &packet, c
 				{
 					GameObject *gameObject = networkGameObjects[i];
 					
-					if (playerGO != gameObject)
+					if (proxy->gameObject != gameObject)
 					{
 						// TODO(you): World state replication lab session
 						proxy->replicationManagerServer.Create(gameObject->networkId);
@@ -173,12 +170,14 @@ void ModuleNetworkingServer::onPacketReceived(const InputMemoryStream &packet, c
 			if (proxy != nullptr && IsValid(proxy->gameObject))
 			{
 				// TODO(you): Reliability on top of UDP lab session
+				uint32 sequenceNumber = 0;
 
 				// Read input data
 				while (packet.RemainingByteCount() > 0)
 				{
 					InputPacketData inputData;
 					packet >> inputData.sequenceNumber;
+					sequenceNumber = inputData.sequenceNumber;
 					packet >> inputData.horizontalAxis;
 					packet >> inputData.verticalAxis;
 					packet >> inputData.buttonBits;
@@ -192,6 +191,14 @@ void ModuleNetworkingServer::onPacketReceived(const InputMemoryStream &packet, c
 						proxy->nextExpectedInputSequenceNumber = inputData.sequenceNumber + 1;
 					}
 				}
+
+				OutputMemoryStream packet;
+				
+				packet << PROTOCOL_ID;
+				packet << ServerMessage::Input;
+				packet << sequenceNumber;
+				
+				sendPacket(packet, fromAddress);
 			}
 		}
 		else if (message == ClientMessage::Ping)
@@ -199,7 +206,11 @@ void ModuleNetworkingServer::onPacketReceived(const InputMemoryStream &packet, c
 			if (proxy != nullptr)	
 				proxy->secondsSinceLastReceivedPacket = 0.0f;	
 		}
-
+		else if (message == ClientMessage::Ack)
+		{
+			if (proxy)
+				proxy->deliveryManager.processAcks(packet);
+		}
 		// TODO(you): UDP virtual connection lab session
 	}
 }
@@ -224,11 +235,15 @@ void ModuleNetworkingServer::onUpdate()
 
 		for (ClientProxy &clientProxy : clientProxies)
 		{
+			clientProxy.deliveryManager.processTimedOutPackets();
+
 			clientProxy.secondsSinceLastSendPacket += Time.deltaTime;
+			clientProxy.secondsSinceLastReplication += Time.deltaTime;
 
 			if (clientProxy.connected)
 			{
 				clientProxy.secondsSinceLastReceivedPacket += Time.deltaTime;
+				clientProxy.secondsSinceLastReplication += Time.deltaTime;
 
 				if (clientProxy.secondsSinceLastReceivedPacket > DISCONNECT_TIMEOUT_SECONDS)
 				{				
@@ -237,13 +252,13 @@ void ModuleNetworkingServer::onUpdate()
 
 				if (clientProxy.secondsSinceLastSendPacket >= PING_INTERVAL_SECONDS && clientProxy.gameObject != nullptr)
 				{
+					clientProxy.secondsSinceLastSendPacket = 0.0f;
+
 					OutputMemoryStream packet;
 					packet << PROTOCOL_ID;
 					packet << ServerMessage::Ping;
 
 					sendPacket(packet, clientProxy.address);
-
-					clientProxy.secondsSinceLastSendPacket = 0.0f;
 				}
 
 				// TODO(you): UDP virtual connection lab session
@@ -255,13 +270,20 @@ void ModuleNetworkingServer::onUpdate()
 				}
 
 				// TODO(you): World state replication lab session				
-				if (clientProxy.replicationManagerServer.repCommands.size())
+				if (!clientProxy.replicationManagerServer.repCommands.empty() && clientProxy.secondsSinceLastReplication > REPLICATION_INTERVAL_SECONDS)
 				{
+					clientProxy.secondsSinceLastReplication = 0.0f;
+
 					OutputMemoryStream packet;
 					packet << PROTOCOL_ID;
 					packet << ServerMessage::Replication;
 
-					clientProxy.replicationManagerServer.Write(packet);
+					Delivery* delivery = clientProxy.deliveryManager.writeSequenceNumber(packet);
+
+					ReplicationManagerDelivery* delegate = new ReplicationManagerDelivery(&clientProxy.replicationManagerServer);
+					delivery->delegate = delegate;
+
+					clientProxy.replicationManagerServer.Write(packet, delegate);
 
 					sendPacket(packet, clientProxy.address);
 				}

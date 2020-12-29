@@ -98,6 +98,8 @@ void ModuleNetworkingClient::onGui()
 
 			ImGui::Text("Input:");
 			ImGui::InputFloat("Delivery interval (s)", &inputDeliveryIntervalSeconds, 0.01f, 0.1f, 4);
+
+			ImGui::Checkbox("Client prediction", &clientPrediction);
 		}
 	}
 }
@@ -140,10 +142,48 @@ void ModuleNetworkingClient::onPacketReceived(const InputMemoryStream &packet, c
 		// TODO(you): World state replication lab session
 		if (message == ServerMessage::Replication)
 		{
-			replicationManagerClient.Read(packet);
+			if (deliveryManager.processSequenceNumber(packet))
+			{
+				replicationManagerClient.Read(packet);
+
+				// TODO(you): Reliability on top of UDP lab session
+				if (deliveryManager.hasPendingAcks())
+				{
+					OutputMemoryStream packet;
+					packet << PROTOCOL_ID;
+					packet << ClientMessage::Ack;
+					deliveryManager.writePendingAcks(packet);
+					sendPacket(packet, fromAddress);
+				}
+			};
 		}
 
 		// TODO(you): Reliability on top of UDP lab session
+		if (message == ServerMessage::Input)
+		{
+			uint32 sequenceNumber;
+			packet >> sequenceNumber;
+
+			if (sequenceNumber > inputDataFront)
+				inputDataFront = sequenceNumber;
+
+			if (clientPrediction)
+			{
+				GameObject* playerGameObject = App->modLinkingContext->getNetworkGameObject(networkId);
+
+				for (uint32 i = inputDataFront; i < inputDataBack; ++i)
+				{
+					InputPacketData& inputPacketData = inputData[i % ArrayCount(inputData)];
+					InputController controller;
+					controller = inputControllerFromInputPacketData(inputPacketData, controller);
+
+					if (playerGameObject)
+					{
+						playerGameObject->behaviour->onInput(controller);
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -186,6 +226,16 @@ void ModuleNetworkingClient::onUpdate()
 			inputPacketData.horizontalAxis = Input.horizontalAxis;
 			inputPacketData.verticalAxis = Input.verticalAxis;
 			inputPacketData.buttonBits = packInputControllerButtons(Input);
+
+			if (clientPrediction)
+			{
+				GameObject* playerGO = App->modLinkingContext->getNetworkGameObject(networkId);
+				
+				if (playerGO != nullptr)
+				{
+					playerGO->behaviour->onInput(Input);
+				}
+			}
 		}
 
 		secondsSinceLastInputDelivery += Time.deltaTime;
@@ -210,9 +260,6 @@ void ModuleNetworkingClient::onUpdate()
 				packet << inputPacketData.buttonBits;
 			}
 
-			// Clear the queue
-			inputDataFront = inputDataBack;
-
 			sendPacket(packet, serverAddress);
 		}
 
@@ -228,13 +275,13 @@ void ModuleNetworkingClient::onUpdate()
 
 		if (secondsSinceLastSendPacket >= PING_INTERVAL_SECONDS)
 		{
+			secondsSinceLastSendPacket = 0.0f;
+
 			OutputMemoryStream packet;
 			packet << PROTOCOL_ID;
 			packet << ClientMessage::Ping;
 
 			sendPacket(packet, serverAddress);
-
-			secondsSinceLastSendPacket = 0.0f;
 		}
 
 		// Update camera for player

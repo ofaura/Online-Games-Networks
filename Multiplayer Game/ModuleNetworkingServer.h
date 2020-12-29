@@ -56,11 +56,14 @@ private:
 
 		float secondsSinceLastSendPacket = 0.0f;
 		float secondsSinceLastReceivedPacket = 0.0f;
+		float secondsSinceLastReplication = 0.0f;
 
 		uint32 nextExpectedInputSequenceNumber = 0;
 		InputController gamepad;
 
 		ReplicationManagerServer replicationManagerServer;
+
+		DeliveryManager deliveryManager;
 	};
 
 	ClientProxy clientProxies[MAX_CLIENTS];
