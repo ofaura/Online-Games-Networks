@@ -126,6 +126,13 @@ void Spaceship::onCollisionTriggered(Collider &c1, Collider &c2)
 				size = 250.0f + 100.0f * Random.next();
 				position = gameObject->position;
 
+				GameObject* killerGO = App->modNetServer->GetClientGoFromTag(c2.gameObject->tag);
+				if (killerGO != nullptr)
+				{
+					killerGO->kills++;
+					NetworkUpdate(killerGO);
+				}
+
 				NetworkDestroy(gameObject);
 			}
 

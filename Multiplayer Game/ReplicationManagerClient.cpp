@@ -36,7 +36,9 @@ void ReplicationManagerClient::Read(const InputMemoryStream& packet)
 					packet >> gameObject->position.x;
 					packet >> gameObject->position.y;
 					packet >> gameObject->angle;
-					
+					packet >> gameObject->tag;
+					packet >> gameObject->kills;
+
 					gameObject->behaviour->read(packet);
 				}
 

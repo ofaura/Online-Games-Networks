@@ -38,6 +38,8 @@ struct GameObject
 	};
 	State state = NON_EXISTING;
 
+	uint32 kills = 0;
+
 public:
 
 	void WriteData(OutputMemoryStream& packet);

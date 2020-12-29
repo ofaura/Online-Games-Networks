@@ -152,6 +152,9 @@ void GameObject::WriteData(OutputMemoryStream& packet)
 	
 		packet << collider->isTrigger;	
 	}
+
+	packet << tag;
+	packet << kills;
 }
 
 void GameObject::ReadData(const InputMemoryStream& packet)
@@ -225,4 +228,7 @@ void GameObject::ReadData(const InputMemoryStream& packet)
 		animation = App->modRender->addAnimation(this);
 		animation->clip = App->modResources->explosionClip;
 	}
+
+	packet >> tag;
+	packet >> kills;
 }

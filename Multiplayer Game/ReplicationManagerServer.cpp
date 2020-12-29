@@ -46,6 +46,8 @@ void ReplicationManagerServer::Write(OutputMemoryStream& packet, ReplicationMana
                     packet << gameObject->position.x;
                     packet << gameObject->position.y;
                     packet << gameObject->angle;
+                    packet << gameObject->tag;
+                    packet << gameObject->kills;
 
                     gameObject->behaviour->write(packet);                 
                 }
