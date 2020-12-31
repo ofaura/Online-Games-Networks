@@ -173,7 +173,7 @@ void ModuleNetworkingClient::onPacketReceived(const InputMemoryStream &packet, c
 					deliveryManager.writePendingAcks(packet);
 					sendPacket(packet, fromAddress);
 				}
-			};
+			}
 		}
 
 		// TODO(you): Reliability on top of UDP lab session
@@ -183,26 +183,6 @@ void ModuleNetworkingClient::onPacketReceived(const InputMemoryStream &packet, c
 			packet >> sequenceNumber;
 
 			inputDataFront = sequenceNumber;
-
-			if (clientPrediction)
-			{
-				GameObject* playerGameObject = App->modLinkingContext->getNetworkGameObject(networkId);
-
-				for (uint32 i = inputDataFront; i < inputDataBack; ++i)
-				{
-					InputPacketData& inputPacketData = inputData[i % ArrayCount(inputData)];
-					
-					InputController controller;
-					controller.horizontalAxis = inputPacketData.horizontalAxis;
-					controller.verticalAxis = inputPacketData.verticalAxis;
-					unpackInputControllerButtons(inputPacketData.buttonBits, controller);
-
-					if (playerGameObject)
-					{
-						playerGameObject->behaviour->onInput(controller);
-					}
-				}
-			}
 		}
 	}
 }
@@ -247,41 +227,43 @@ void ModuleNetworkingClient::onUpdate()
 			inputPacketData.verticalAxis = Input.verticalAxis;
 			inputPacketData.buttonBits = packInputControllerButtons(Input);
 
-			if (clientPrediction)
+			// Input delivery interval timed out: create a new input packet
+			if (secondsSinceLastInputDelivery > inputDeliveryIntervalSeconds)
 			{
-				GameObject* playerGO = App->modLinkingContext->getNetworkGameObject(networkId);
-				
-				if (playerGO != nullptr)
+				secondsSinceLastInputDelivery = 0.0f;
+
+				OutputMemoryStream packet;
+				packet << PROTOCOL_ID;
+				packet << ClientMessage::Input;
+
+				// TODO(you): Reliability on top of UDP lab session
+
+				for (uint32 i = inputDataFront; i < inputDataBack; ++i)
 				{
-					playerGO->behaviour->onInput(Input);
+					InputPacketData& inputPacketData = inputData[i % ArrayCount(inputData)];
+					packet << inputPacketData.sequenceNumber;
+					packet << inputPacketData.horizontalAxis;
+					packet << inputPacketData.verticalAxis;
+					packet << inputPacketData.buttonBits;
 				}
+
+				sendPacket(packet, serverAddress);
 			}
 		}
 
 		secondsSinceLastInputDelivery += Time.deltaTime;
 
-		// Input delivery interval timed out: create a new input packet
-		if (secondsSinceLastInputDelivery > inputDeliveryIntervalSeconds)
+
+		if (clientPrediction)
 		{
-			secondsSinceLastInputDelivery = 0.0f;
+			GameObject* playerGO = App->modLinkingContext->getNetworkGameObject(networkId);
 
-			OutputMemoryStream packet;
-			packet << PROTOCOL_ID;
-			packet << ClientMessage::Input;
-
-			// TODO(you): Reliability on top of UDP lab session
-
-			for (uint32 i = inputDataFront; i < inputDataBack; ++i)
+			if (playerGO != nullptr)
 			{
-				InputPacketData &inputPacketData = inputData[i % ArrayCount(inputData)];
-				packet << inputPacketData.sequenceNumber;
-				packet << inputPacketData.horizontalAxis;
-				packet << inputPacketData.verticalAxis;
-				packet << inputPacketData.buttonBits;
+				playerGO->behaviour->onInput(Input);
 			}
-
-			sendPacket(packet, serverAddress);
 		}
+		
 
 		// TODO(you): Latency management lab session
 		secondsSinceLastReceivedPacket += Time.deltaTime;
